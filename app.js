@@ -16,6 +16,52 @@ function projectedYtd(r){let n=num('periodNumber'),max=num('frequency');if(!Numb
 function update(){try{let r=calculate(),y=projectedYtd(r);for(let [k,v] of Object.entries({gross:r.gross,federal:r.fed,ss:r.ss,medicare:r.med,otherD:r.other,net:r.net}))$(k).textContent=money(v);$('payday').textContent=fmt(r.payday);$('processing').textContent=fmt(r.process);for(let [k,v] of Object.entries({ytdGross:y.gross,ytdNet:y.net,ytdFed:y.fed,ytdFica:cents(y.ss+y.med)}))$(k).textContent=money(v);$('status').textContent=''}catch(e){$('status').textContent=e.message}}
 function ascii(s){return String(s).normalize('NFKD').replace(/[^\x20-\x7e]/g,'?')};function esc(s){return ascii(s).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)')}
 function makePdf(lines,title){let ops=['0.09 0.16 0.27 rg'];for(let l of lines){ops.push(`BT /F1 ${l.size||10} Tf 1 0 0 1 ${l.x||45} ${l.y} Tm (${esc(l.text)}) Tj ET`)}let stream=ops.join('\n')+'\n',date=new Date,stamp=`D:${date.getFullYear()}${String(date.getMonth()+1).padStart(2,'0')}${String(date.getDate()).padStart(2,'0')}${String(date.getHours()).padStart(2,'0')}${String(date.getMinutes()).padStart(2,'0')}${String(date.getSeconds()).padStart(2,'0')}`;let objects=[null,'<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',`<< /Length ${stream.length} >>\nstream\n${stream}endstream`,`<< /Title (${esc(title)}) /Creator (${esc(val('pdfCreator')||'Payroll Desk iPhone web app')}) /Producer (${esc((val('pdfProducer')||'Payroll Desk')+' | Payroll Desk built-in JavaScript PDF engine')}) /CreationDate (${stamp}) >>`];let pdf='%PDF-1.4\n',offset=[0];for(let i=1;i<objects.length;i++){offset[i]=pdf.length;pdf+=`${i} 0 obj\n${objects[i]}\nendobj\n`}let xref=pdf.length;pdf+=`xref\n0 ${objects.length}\n0000000000 65535 f \n`;for(let i=1;i<objects.length;i++)pdf+=`${String(offset[i]).padStart(10,'0')} 00000 n \n`;pdf+=`trailer\n<< /Size ${objects.length} /Root 1 0 R /Info 6 0 R >>\nstartxref\n${xref}\n%%EOF`;return new Blob([new TextEncoder().encode(pdf)],{type:'application/pdf'})}
-function documentPdf(){let r=calculate(),ytd=projectedYtd(r),final=val('mode')==='final';if(!val('employee').trim()||!val('employer').trim())throw Error('Employer and employee names are required.');if(final){if(!val('paymentRef').trim()||!val('actualPaid')||!$('verified').checked)throw Error('Finalized statements require payment reference, actual payment date, and verification.');if(val('actualPaid')>iso(new Date()))throw Error('Actual payment date cannot be in the future.');if(val('actualPaid')!==(val('manualPayDate')||r.payday))throw Error('Actual payment date differs from scheduled date; reconcile the bank payment before finalizing.')}let y=742,lines=[];function line(text,size=10,gap=22){lines.push({text,x:46,y,size});y-=gap}line(final?'EARNINGS STATEMENT':'DRAFT - PAYROLL WORKSHEET',17,29);line(val('employer'),12,18);line(val('employerAddress'),9,30);line(`Employee: ${val('employee')}`,11);if(val('employeeId'))line(`Employee ID: ${val('employeeId')}`);if(val('ssn'))line(`SSN: XXX-XX-${val('ssn')}`);if(val('address'))line(`Address: ${val('address')}`,9);y-=10;line(`Pay period: ${fmt(val('start'))} to ${fmt(val('end'))}`);line(`Pay date: ${fmt(val('manualPayDate')||r.payday)}`);line(`Statement date: ${fmt(val('statementDate'))}`);line(`Processing date: ${fmt(r.process)}`);if(final){line(`Payment confirmed: ${fmt(val('actualPaid'))}`);line(`Payment reference: ${val('paymentRef')}`)}y-=13;line('CURRENT PAY PERIOD',12,28);for(let [a,b] of [['Gross earnings',r.gross],['Federal income tax',r.fed],['Social Security tax',r.ss],['Medicare tax',r.med],['Other deductions',r.other],['NET PAY',r.net]])line(`${a.padEnd(28,' ')} ${money(b)}`,a==='NET PAY'?13:11,28);y-=25;line(final?'Record prepared from confirmed payroll payment information.':'DRAFT ONLY - Not evidence of wages paid.',9,22);line(`${ytd.estimated?'PROJECTED ':''}YTD: Gross ${money(ytd.gross)} | Net ${money(ytd.net)}`,9,18);line(`YTD taxes: Federal ${money(ytd.fed)} | SS ${money(ytd.ss)} | Medicare ${money(ytd.med)}`,9,18);if(ytd.estimated)line('YTD calculated from assumed constant salary; verify against payroll history.',9,18);line('Created '+new Date().toLocaleString('en-US'),8,18);return makePdf(lines,val('pdfTitle').trim()||(final?'Earnings Statement':'Draft Payroll Worksheet'))}
+function documentPdf(){
+ const r=calculate(), ytd=projectedYtd(r), final=val('mode')==='final';
+ if(!val('employee').trim()||!val('employer').trim())throw Error('Employer and employee names are required.');
+ if(final){if(!val('paymentRef').trim()||!val('actualPaid')||!$('verified').checked)throw Error('Finalized statements require payment reference, actual payment date, and verification.');if(val('actualPaid')>iso(new Date()))throw Error('Actual payment date cannot be in the future.');if(val('actualPaid')!==(val('manualPayDate')||r.payday))throw Error('Reconcile actual and scheduled payment dates before finalizing.');}
+ const L=[];const put=(text,x,y,size=9)=>L.push({text:String(text),x,y,size});
+ const cash=n=>money(n), pay=val('manualPayDate')||r.payday;
+ const short=s=>s?new Date(s+'T12:00:00Z').toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric',timeZone:'UTC'}):'—';
+ // Letter-sized statement, modeled on the supplied two-column payroll statement.
+ put('CO.     FILE      DEPT     CLOCK      VCHR. NO',38,755,7);
+ put('Earnings Statement',414,755,15);
+ put('----     ------    ------    -----      ------',38,742,7);
+ if(!final)put('DRAFT / SAMPLE - NOT ISSUED',416,739,8);
+ put(val('employer'),38,709,11);
+ const addr=(val('employerAddress')||'').split(/\n|,/).map(x=>x.trim()).filter(Boolean);
+ addr.slice(0,3).forEach((t,i)=>put(t,38,692-i*13,8));
+ put('Period Beginning:',372,708,8);put(short(val('start')),501,708,8);
+ put('Period Ending:',372,692,8);put(short(val('end')),501,692,8);
+ put('Pay Date:',372,676,8);put(short(pay),501,676,8);
+ put(val('employee').toUpperCase(),372,649,10);
+ const empAddr=(val('address')||'').split(/\n|,/).map(x=>x.trim()).filter(Boolean);
+ empAddr.slice(0,2).forEach((t,i)=>put(t.toUpperCase(),372,634-i*13,8));
+ put('Social Security Number:',38,634,8);put(val('ssn')?'XXX-XX-'+val('ssn'):'—',180,634,8);
+ put('Taxable Marital Status:',38,616,8);put(val('filing').replaceAll('_',' '),180,616,8);
+ put('Employee ID:',38,598,8);put(val('employeeId')||'—',180,598,8);
+ put('Earnings',38,555,11);put('Rate',137,555,8);put('Hours',196,555,8);put('Amount',255,555,8);put('Year to Date',314,555,8);
+ put('Other benefits and',438,571,9);put('Information',438,558,9);
+ put('Salary',38,530,9);put(cash(num('salary')),133,530,8);put('—',204,530,8);put(cash(r.gross),251,530,9);put(cash(ytd.gross),314,530,9);
+ put('Gross Pay',136,502,10);put(cash(r.gross),251,502,10);
+ put('No Other Benefits or Information',423,518,8);put('at this time.',423,504,8);
+ put('Deduction',38,449,11);put('Statutory',138,449,8);put('Amount',256,449,8);put('Year to Date',315,449,8);
+ put('Important Notes',437,449,10);
+ [['FICA - Medicare',r.med,ytd.med],['FICA - Social Security',r.ss,ytd.ss],['Federal Tax',r.fed,ytd.fed],['Other deductions',r.other,ytd.other]].forEach((v,i)=>{let yy=426-i*21;put(v[0],137,yy,8);put('-'+cash(v[1]),251,yy,8);put(cash(v[2]),315,yy,8)});
+ put('No Important Notes',438,420,8);put('at this time.',438,405,8);
+ put('Net Pay',137,325,11);put(cash(r.net),252,325,11);
+ put('Checking',137,305,9);put('-'+cash(r.net),252,305,9);
+ put('PAYMENT ADVICE',38,250,10);put(val('employer'),38,231,9);
+ put('Advice Number:',365,231,8);put(final?val('paymentRef'):'SAMPLE',474,231,8);
+ put('Pay date:',365,216,8);put(short(pay),474,216,8);
+ put('Social Security Number:',365,201,8);put(val('ssn')?'XXX-XX-'+val('ssn'):'—',474,201,8);
+ put('Deposited to the account of',38,157,8);put('Account Number',257,157,8);put('Amount',485,157,8);
+ put(val('employee').toUpperCase(),38,138,9);put('NOT PROVIDED',257,138,8);put(cash(r.net),482,138,9);
+ put('NON-NEGOTIABLE',465,86,9);
+ put('Statement date: '+short(val('statementDate')),38,75,7);
+ if(!final)put('DRAFT ONLY - Not evidence of wages paid.',38,60,8);
+ if(ytd.estimated)put('YTD projected from assumed constant wages.',38,46,7);
+ return makePdf(L,val('pdfTitle').trim()||(final?'Earnings Statement':'Draft Earnings Statement'));
+}
 let activeUrl=null;function generate(download){try{let blob=documentPdf();if(activeUrl)URL.revokeObjectURL(activeUrl);activeUrl=URL.createObjectURL(blob);if(download){let a=document.createElement('a');a.href=activeUrl;a.download=`payroll_${val('employee').trim().replace(/[^a-z0-9]+/gi,'_')}_${val('end')}_${val('mode')}.pdf`;document.body.append(a);a.click();a.remove();$('status').textContent='PDF generated. Use Files or Share to save it.'}else{window.open(activeUrl,'_blank');$('status').textContent='PDF preview opened in a new tab. If blocked, use Save PDF.'}}catch(e){$('status').textContent=e.message}}
 $('overrideCurrent').addEventListener('change',()=>{$('manualCurrent').classList.toggle('hidden',!$('overrideCurrent').checked);update()});$('mode').addEventListener('change',()=>{$('finalFields').classList.toggle('hidden',val('mode')!=='final');update()});document.querySelectorAll('input,select').forEach(e=>e.addEventListener('input',update));$('preview').addEventListener('click',()=>generate(false));$('download').addEventListener('click',()=>generate(true));if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});update();

@@ -32,16 +32,9 @@ function bank(d){return d.getUTCDay()!==0&&d.getUTCDay()!==6&&!holidays(d.getUTC
 function calculate(){let salary=num('salary'),periods=effectivePeriods();if(!Number.isFinite(salary)||salary<0||!Number.isInteger(periods)||!val('start')||!val('end')||val('start')>val('end'))throw Error('Enter a valid salary and pay period.');for(let id of ['credits','other','deductions','extra','postTax'])if(!Number.isFinite(num(id))||num(id)<0)throw Error('W-4 and deduction amounts must be nonnegative.');
 let gross=cents(salary/periods),step2=$('step2').checked,filing=val('filing');let standard=step2?0:filing==='married'?12900:8600;let adjusted=Math.max(0,gross*periods+num('other')-num('deductions')-standard);let bracket=TABLES[`${filing}:${step2}`].filter(r=>adjusted>=r[0]).at(-1);let fed=cents(Math.max(0,(bracket[1]+(adjusted-bracket[0])*bracket[2])/periods-num('credits')/periods)+num('extra'));let ss=cents(gross*.062),med=cents(gross*.0145),other=num('postTax');if($('overrideCurrent').checked){fed=num('manualFed');ss=num('manualSS');med=num('manualMed');other=num('manualOther');for(let x of [fed,ss,med,other])if(!Number.isFinite(x)||x<0)throw Error('Enter valid current deductions.')}let net=cents(gross-fed-ss-med-other);if(net<0)throw Error('Deductions exceed gross pay.');let payday=prev(dt(val('end'))),process=prev(prev(payday,false),false);return {gross,fed,ss,med,other,net,payday:iso(payday),process:iso(process)}}
 function projectedYtd(r){let n=num('periodNumber'),max=effectivePeriods();if(!Number.isInteger(n)||n<1||n>max)throw Error(`Pay period number must be between 1 and ${max}.`);if(val('ytdSource')==='manual'){let gross=num('manualYtdGross'),fed=num('manualYtdFed'),ss=num('manualYtdSS'),med=num('manualYtdMed'),other=num('manualYtdOther');for(let x of [gross,fed,ss,med,other])if(!Number.isFinite(x)||x<0)throw Error('Enter valid YTD amounts.');return {n,gross,fed,ss,med,other,net:cents(gross-fed-ss-med-other),estimated:false}}let gross=cents(num('salary')*n/max),fed=cents(r.fed*n),ss=cents(r.ss*n),med=cents(r.med*n),other=cents(r.other*n),net=cents(gross-fed-ss-med-other);return {n,gross,fed,ss,med,other,net,estimated:true}}
-function validateYtd(r,y,final=false){
- if(!final)return;
- if(y.estimated)throw Error('Final records require actual YTD totals. Select Manual entries and enter cumulative payroll totals including this payment.');
- const pairs=[['gross',r.gross],['fed',r.fed],['ss',r.ss],['med',r.med],['other',r.other],['net',r.net]];
- for(const [key,current] of pairs)if(y[key]+.005<current)throw Error('YTD '+({fed:'federal tax',ss:'Social Security',med:'Medicare'}[key]||key)+' cannot be less than this payment. YTD must include the current payment.');
- if(y.net<0)throw Error('YTD deductions exceed YTD gross pay.');
-}
 function exportState(){
  const final=val('mode')==='final';
- $('exportState').textContent=final?'FINAL RECORD - actual payment and cumulative payroll totals required.':'DRAFT PREVIEW - exported PDF will contain draft labels.';
+ $('exportState').textContent=final?'FINAL RECORD selected.':'DRAFT PREVIEW - exported PDF will contain draft labels.';
  $('download').textContent=final?'Save final record':'Save draft PDF';
  $('preview').textContent=final?'Preview final record':'Preview draft PDF';
 }
@@ -63,82 +56,112 @@ function makePdf(items,title){
 }
 function documentPdf(){
  const r=calculate(),y=projectedYtd(r),final=val('mode')==='final';
- validateYtd(r,y,final);
- if(!val('employee').trim()||!val('employer').trim())throw Error('Employer and employee names are required.');
+  if(!val('employee').trim()||!val('employer').trim())throw Error('Employer and employee names are required.');
  if(final&&val('paymentMethod')==='check')throw Error('Manual check issuance is not enabled. Use draft preview only.');if(final){if(!val('paymentRef').trim()||!val('actualPaid')||!$('verified').checked)throw Error('Finalized statements require verified payment details.');if(val('actualPaid')>iso(new Date()))throw Error('Payment date cannot be in the future.');if(val('actualPaid')!==(val('manualPayDate')||r.payday))throw Error('Reconcile actual and scheduled payment dates.');}
  const I=[],T=(text,x,y,size=8,bold=false,italic=false)=>I.push({kind:'text',text:String(text),x,y,size,bold,italic}),R=(text,right,y,size=8,bold=false)=>{const c=document.createElement('canvas').getContext('2d');c.font=`${bold?'bold ':''}${size}px Helvetica`;T(text,right-c.measureText(String(text)).width,y,size,bold)},L=(x,y,x2,width=.65,dash=false)=>I.push({kind:'line',x,y,x2,y2:y,width,dash}),V=(x,y,y2,width=.65)=>I.push({kind:'line',x,y,x2:x,y2,width}),F=(x,y,w,h,gray=.93)=>I.push({kind:'fill',x,y,w,h,gray}),B=(x,y,w,h)=>I.push({kind:'rect',x,y,w,h}),C=(x,y,w,h,rgb)=>I.push({kind:'colorfill',x,y,w,h,rgb});
  const short=s=>s?new Date(s+'T12:00:00Z').toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric',timeZone:'UTC'}):'—';
  const pay=val('manualPayDate')||r.payday, employer=val('employer').trim(),employee=val('employee').trim().toUpperCase(),ssn=val('ssn')?'XXX-XX-'+val('ssn'):'NOT PROVIDED';
- const ea=String(val('employerAddress')||'').split(',').map(s=>s.trim()).filter(Boolean),pa=String(val('address')||'').split(',').map(s=>s.trim()).filter(Boolean);
+ const addressParts=text=>{const lines=String(text||'').split(/[,\n]+/).map(s=>s.trim()).filter(Boolean);if(lines.length>1&&/^[A-Za-z]{2}\s+\d{5}(?:-\d{4})?$/.test(lines.at(-1)))lines.splice(-2,2,lines.at(-2)+', '+lines.at(-1));return lines;};
+ const ea=addressParts(val('employerAddress')),pa=addressParts(val('address'));
+ const measure=(text,size=8,bold=false,italic=false)=>{const c=document.createElement('canvas').getContext('2d');c.font=`${italic?'italic ':''}${bold?'bold ':''}${size}px Helvetica`;return c.measureText(ascii(text)).width;};
+ const fit=(text,x,yy,width,size=8,bold=false,italic=false)=>{let fs=size;while(measure(text,fs,bold,italic)>width&&fs>6)fs-=.25;if(measure(text,fs,bold,italic)>width)throw Error('Text is too long for this layout: '+String(text).slice(0,28));T(text,x,yy,fs,bold,italic);};
+ const wrap=(text,width,size=8,bold=false)=>{const lines=[];let line='';for(const word of String(text||'').split(/\s+/)){if(!word)continue;if(line&&measure(line+' '+word,size,bold)>width){lines.push(line);line=word;}else line+=(line?' ':'')+word;}if(line)lines.push(line);return lines;};
+ const lines=(parts,x,yy,width,size=8,leading=11,max=4,bold=false,italic=false)=>{const rows=parts.flatMap(part=>wrap(part,width,size,bold));if(rows.length>max)throw Error('Address or notes are too long for this layout. Use shorter address lines or another template.');rows.forEach((text,i)=>fit(text,x,yy-leading*i,width,size,bold,italic));};
  const comment=val('comments').trim(),commentLines=(comment.match(/.{1,72}(?:\s|$)/g)||[]).map(s=>s.trim()).slice(0,4);
  const head=(title)=>{T(title,36,756,15,true);R(`PERIOD ${y.n} OF ${effectivePeriods()}`,574,758,8,true);L(36,747,576,1);if(!final){F(36,723,540,17,.92);T('DRAFT / PRACTICE - NOT ISSUED',43,728,8,true)}};
- const advice=(top)=>{
-  const bottom=42,h=202,topY=bottom+h;
-  L(36,topY+8,576,.75,true);B(36,bottom,540,h);
-  F(37,topY-30,538,29,.94);T('PAYMENT ADVICE',48,topY-19,10,true);R('NON-NEGOTIABLE',564,topY-19,8,true);
-  T(employer.slice(0,65),48,topY-49,9,true);ea.slice(0,3).forEach((v,i)=>T(v.slice(0,62),48,topY-63-i*11,7.5));
-  B(420,topY-86,144,45);T('PAY DATE',432,topY-55,7,true);T(short(pay),432,topY-75,11,true);
-  L(48,topY-105,564,.5);
-  T('EMPLOYEE',48,topY-122,7,true);T(employee.slice(0,52),48,topY-140,10,true);
-  T('PAYMENT REFERENCE',48,topY-162,7,true);T((final?val('paymentRef'):'DRAFT - NOT ISSUED').slice(0,52),48,topY-179,8);
-  T('DEPOSIT ACCOUNT',300,topY-122,7,true);T((val('accountType')+' '+(val('accountLast4')?'****'+val('accountLast4'):'(not supplied)')).slice(0,31),300,topY-139,8);
-  T('NET PAY',432,topY-122,7,true);R(money(r.net),564,topY-143,14,true);
-  T(val('paymentMethod')==='check'?'Manual check preparation':'Direct deposit',300,topY-177,8);
+ const advice=()=>{
+  L(36,238,576,.8,true);
+  fit(employer,54,207,250,9);lines(ea,54,193,250,8,11,4);
+  T('Advice number:',344,207,8,true);fit(final?val('paymentRef'):'DRAFT - NOT ISSUED',456,207,115,8);
+  T('Pay date:',344,191,8);T(short(pay),456,191,8);
+  T('Social Security Number:',344,175,8);T(ssn,456,175,8);
+  const cols=[54,230,370,441,576];
+  T('Deposited to the account of',cols[0],108,8,true);T('Account number',cols[1],108,8,true);T('Method',cols[2],108,8,true);R('Amount',570,108,8,true);L(54,101,576,.75);
+  fit(employee,54,87,170,8,true);T(val('accountLast4')?'********'+val('accountLast4'):'Not supplied',230,87,8);T(val('paymentMethod')==='check'?'Check preparation':'Direct deposit',370,87,7.5);B(497,79,79,22);R(money(r.net),570,87,9,true);
+  R('NON-NEGOTIABLE',576,48,12,true);
  };
- const footer=()=>{if(y.estimated)T('YTD projection - assumes constant pay and deductions each period',36,36,7);if(!final){T('SAMPLE / DRAFT - not evidence of wages paid',36,25,7)};};
+ const footer=()=>{if(!final){T('SAMPLE / DRAFT - not evidence of wages paid',36,25,7)};};
  const adviceStyle=val('adviceStyle')||'blue';
  const securityHeader=(x,top,w)=>{T('EMPLOYER-ISSUED PAYROLL DOCUMENT  |  PAYMENT DETAILS SUBJECT TO EMPLOYER VERIFICATION',x,top,6.1,true);L(x,top-7,x+w,.5)};
+ const amountWords=amount=>{
+  const small=['zero','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'],tens=['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+  const say=n=>n<20?small[n]:n<100?tens[Math.floor(n/10)]+(n%10?' '+small[n%10]:''):n<1000?small[Math.floor(n/100)]+' hundred'+(n%100?' '+say(n%100):''):n<1000000?say(Math.floor(n/1000))+' thousand'+(n%1000?' '+say(n%1000):''):say(Math.floor(n/1000000))+' million'+(n%1000000?' '+say(n%1000000):'');
+  const total=Math.round(amount*100);return (say(Math.floor(total/100))+' and '+String(total%100).padStart(2,'0')+'/100 dollars').toUpperCase();
+ };
  const styledAdvice=(x,bottom,w,h)=>{
-  const cream=adviceStyle==='cream', top=bottom+h;
-  C(x,bottom,w,h,cream?[.984,.974,.933]:[.90,.95,.99]);B(x,bottom,w,h);
-  T('DIRECT DEPOSIT ADVICE',x+12,top-19,10,true);T('NON-NEGOTIABLE',x+12,top-32,7,true);
-  T(employer.slice(0,58),x+12,top-52,9,true);ea.slice(0,3).forEach((v,i)=>T(v.slice(0,63),x+12,top-65-i*10,7.4));
-  const right=x+w-12,boxX=right-142;
-  B(boxX,top-63,142,48);T('PAY DATE',boxX+10,top-30,7,true);R(short(pay),right-10,top-49,11,true);
-  B(boxX,bottom+12,142,51);T('NET PAY',boxX+10,bottom+47,7,true);R(money(r.net),right-10,bottom+26,14,true);
-  L(x+12,bottom+56,boxX-12,.5);T('EMPLOYEE',x+12,bottom+43,7,true);T(employee.slice(0,48),x+12,bottom+28,9,true);
-  T(val('accountType')+' '+(val('accountLast4')?'****'+val('accountLast4'):'(account not supplied)'),x+12,bottom+13,7.5);
+  const cream=adviceStyle==='cream',top=bottom+h,right=x+w;
+  C(x,bottom,w,h,cream?[.986,.978,.946]:[.88,.95,.99]);B(x,bottom,w,h);
+  fit(employer,x+14,top-23,w-206,9,true);lines(ea,x+14,top-37,w-206,7.5,10,4);
+  T('NON-NEGOTIABLE',x+220,top-21,7);
+  const bx=right-152,bw=138;
+  B(bx,top-66,bw,48);F(bx,top-66,bw,13,.86);T('PAY DATE',bx+48,top-62,7,true);R(short(pay),right-24,top-40,11,true);
+  B(bx,bottom+40,bw,48);F(bx,bottom+40,bw,13,.86);T('NET AMOUNT',bx+36,bottom+44,7,true);R(money(r.net),right-24,bottom+66,13,true);
+  T('PAY TO',x+14,bottom+72,7);T('THE ORDER OF',x+14,bottom+62,7);
+  fit(employee,x+106,bottom+68,w-278,9,true);lines(pa,x+106,bottom+54,w-278,7.5,10,2);
+  fit(amountWords(r.net),x+14,bottom+17,w-28,7);L(x+14,bottom+11,right-14,.45);
  };
  const template=val('template');
  if(template==='classic'){
-  F(36,743,265,30,.91);T('CO.      FILE      DEPT      CLOCK      VCHR. NO',42,761,7.5,true);T([val('companyCode'),val('fileCode'),val('deptCode'),val('clockCode'),val('voucherCode')].map(x=>(x||'—').slice(0,7).padEnd(10,' ')).join(' ').slice(0,53),42,750,8);if(val('extraCode'))T(val('extraCode').slice(0,8),303,750,7);
-  T('Earnings Statement',338,758,16,true);if(!final)T('DRAFT / PRACTICE',338,745,8,true);
-  T(employer,40,714,10,true,true);if(val('employerPhone'))T(val('employerPhone'),40,700,9,true,true);ea.slice(0,3).forEach((s,i)=>T(s,40,685-13*i,9,true,true));
-  T('Period Beginning:',340,710,8);R(short(val('start')),572,710,8);T('Period Ending:',340,694,8);R(short(val('end')),572,694,8);T('Pay Date:',340,678,8);R(short(pay),572,678,8);
-  T('Social Security Number:',40,620,8);T(ssn,175,620,8);T('Taxable Marital Status:',40,605,8);T(val('filing'),175,605,8);T('Employee ID:',40,590,8);T(val('employeeId')||'—',175,590,8);
-  T(employee,340,630,10,true,true);pa.slice(0,3).forEach((s,i)=>T(s,340,614-i*14,9,true,true));
-  T('Earnings',36,545,9,true);T('Annual pay',126,545,8,true);T('Hours',205,545,8,true);T('Amount',264,545,8,true);T('Year to Date',333,545,8,true);L(36,538,395,.65);
-  T('Salary',36,520,8);R(money(num('salary')),191,520,8);R('—',240,520,8);R(money(r.gross),313,520,8);R(money(y.gross),395,520,8);
-  F(113,488,200,19,.91);T('Gross Pay',119,494,8,true);R(money(r.gross),309,494,8,true);L(113,488,313,.5);
-  T('Other benefits and information',416,545,8,true);L(413,538,575,.65);T('No other benefits entered',419,510,7.5);
-  T('Deduction',36,455,9,true);T('Statutory',119,455,8,true);T('Amount',264,455,8,true);T('Year to Date',333,455,8,true);L(36,449,395,.65);
-  [['FICA - Medicare',r.med,y.med],['FICA - Social Security',r.ss,y.ss],['Federal Tax',r.fed,y.fed],['Other deductions',r.other,y.other]].forEach(([n,c,z],i)=>{let h=429-22*i;T(n,119,h,8);R('-'+money(c),313,h,8);R(money(z),395,h,8)});
-  F(113,317,200,20,.91);T('Net Pay',119,324,8,true);R(money(r.net),309,324,9,true);T(val('paymentMethod')==='check'?'Check':val('accountType')+(val('accountLast4')?' ****'+val('accountLast4'):''),119,304,8);R('-'+money(r.net),309,304,8);
-  T('Important Notes',416,455,8,true);L(413,449,575,.65);(commentLines.length?commentLines:['No important notes entered']).forEach((s,i)=>T(s.slice(0,34),416,429-i*14,7.5));
-  T(`Pay period ${y.n} of ${effectivePeriods()}`,36,287,7.5);T('Statement date: '+short(val('statementDate')),36,273,7.5);
-  advice(false);footer();
+  F(36,744,250,29,.91);
+  const codes=[['CO.',val('companyCode')],['FILE',val('fileCode')],['DEPT',val('deptCode')],['CLOCK',val('clockCode')],['VCHR. NO.',val('voucherCode')]];
+  codes.forEach(([label,value],i)=>{const x=41+i*49;T(label,x,761,7);fit(value||'-',x,749,46,7.5);});
+  fit('Earnings Statement',326,755,250,17,true);if(!final)T('DRAFT / PRACTICE',326,740,8,true);
+  fit(employer,40,718,266,10,true,true);if(val('employerPhone'))T(val('employerPhone'),40,702,9,true,true);lines(ea,40,686,266,9,14,4,true,true);
+  [['Period Beginning:',val('start')],['Period Ending:',val('end')],['Pay Date:',pay]].forEach(([label,value],i)=>{T(label,326,695-i*17,9);R(short(value),574,695-i*17,9);});
+  [['Social Security Number:',ssn],['Taxable Marital Status:',val('filing')],['Employee ID:',val('employeeId')||'-']].forEach(([label,value],i)=>{T(label,40,616-i*16,8.5);fit(value,176,616-i*16,128,8.5);});
+  fit(employee,326,616,248,10,true,true);lines(pa,326,598,248,9,14,4,true,true);
+  // Two balanced statement columns with a fixed gap.
+  T('Earnings',36,525,8.5,true);T('Annual pay',110,525,7.5,true);T('Hours',169,525,7.5,true);R('Amount',238,525,7.5,true);R('Year to Date',305,525,7.5,true);L(36,518,306,.65);
+  T('Salary',36,501,8);R(money(num('salary')),157,501,8);R('-',188,501,8);R(money(r.gross),238,501,8);R(money(y.gross),305,501,8);
+  F(103,468,139,22,.92);T('Gross Pay',108,476,8,true);R(money(r.gross),237,476,9,true);L(103,468,242,.5);
+  T('Other benefits and',326,541,8.5,true);T('information',326,528,8.5,true);R('This period',494,525,7.5,true);R('Year to date',576,525,7.5,true);L(326,518,576,.65);
+  const benefit=val('contribLabel').trim();if(benefit){fit(benefit,326,501,114,8);R(money(num('contribCurrent')),494,501,8);R(money(num('contribYtd')),576,501,8);}else{T('No other benefits or information',366,478,8);T('at this time.',413,463,8);}
+  T('Deductions',36,411,8.5,true);R('Amount',238,411,8,true);R('Year to Date',305,411,8,true);L(36,404,306,.65);
+  [['FICA - Medicare',r.med,y.med],['FICA - Social Security',r.ss,y.ss],['Federal Tax',r.fed,y.fed],['Other deductions',r.other,y.other]].forEach(([name,c,z],i)=>{const yy=386-i*19;T(name,40,yy,8);R('-'+money(c),238,yy,8);R(money(z),305,yy,8);});
+  F(103,286,139,22,.92);T('Net Pay',108,294,8,true);R(money(r.net),237,294,9,true);T(val('accountType'),108,272,8);R('-'+money(r.net),238,272,8);
+  T('Important Notes',326,411,9,true);L(326,404,576,.65);lines([comment||'No important notes at this time.'],326,382,244,8,13,6);
+  T('Statement date: '+short(val('statementDate')),36,251,7);R(`Pay period ${y.n} of ${effectivePeriods()}`,576,251,7);advice();footer();
  }else if(template==='summary'){
-  head('Payroll Summary');styledAdvice(36,550,540,152);
-  B(36,476,540,59);T('EMPLOYEE INFORMATION',36,525,9,true);L(36,519,576,.8);
-  const cols=[36,210,298,390,482];[204,292,384,476].forEach(x=>V(x,476,519,.4));[['Employee',employee],['Employee ID',val('employeeId')||'—'],['Period start',short(val('start'))],['Period end',short(val('end'))],['Pay date',short(pay)]].forEach(([k,v],i)=>{T(k,cols[i]+3,503,7,true);T(String(v).slice(0,i===0?28:16),cols[i]+3,486,7.3)});
-  B(36,381,540,77);F(36,441,540,17,.9);T('IMPORTANT NOTES',42,447,8,true);(commentLines.length?commentLines:['No important notes entered']).forEach((s,i)=>T(s.slice(0,90),42,428-i*13,7.5));
-  B(36,310,540,62);[125,214,303,392,481].forEach(x=>V(x,310,372,.35));F(36,353,540,19,.9);['','GROSS PAY','PRE-TAX','TAXES','OTHER','NET PAY'].forEach((s,i)=>T(s,40+i*89,359,7,true));
-  [['CURRENT',r.gross,0,r.fed+r.ss+r.med,r.other,r.net],['YTD',y.gross,0,y.fed+y.ss+y.med,y.other,y.net]].forEach((row,i)=>{let h=338-i*21;row.forEach((v,j)=>T(j?money(v):v,40+j*89,h,7.5));L(36,h-7,576,.3)});
+  head('Payroll Summary');styledAdvice(36,550,540,165);
+  const meta=[['Employee name',employee,85],['SSN',ssn,58],['Employee address',pa.join(', ')||'Not supplied',83],['Company',employer,91],['Company address',ea.join(', '),92],['Period begin',short(val('start')),44],['Period end',short(val('end')),44],['Pay date',short(pay),43]];
+  B(36,442,540,96);F(36,505,540,33,.92);L(36,505,576,.5);let xx=36;
+  meta.forEach(([label,value,width],i)=>{if(i)V(xx,442,538,.4);lines([label],xx+4,526,width-8,6.7,9,3,true);lines([value],xx+4,491,width-8,6.7,9,5);xx+=width;});
+  B(36,370,540,63);F(36,416,540,17,.9);T('IMPORTANT NOTES',42,422,8,true);lines([comment||'No important notes entered'],42,403,526,7.5,11,3);
+  B(36,296,540,62);[125,214,303,392,481].forEach(x=>V(x,296,358,.35));F(36,339,540,19,.9);['','GROSS PAY','PRE-TAX','TAXES','OTHER','NET PAY'].forEach((s,i)=>T(s,40+i*89,345,7,true));
+  [['CURRENT',r.gross,0,r.fed+r.ss+r.med,r.other,r.net],['YTD',y.gross,0,y.fed+y.ss+y.med,y.other,y.net]].forEach((row,i)=>{let h=324-i*21;row.forEach((v,j)=>T(j?money(v):v,40+j*89,h,7.5));L(36,h-7,576,.3)});
   B(36,64,261,218);B(307,64,269,218);F(36,260,261,22,.93);F(307,260,269,22,.93);T('EARNINGS',42,267,9,true);T('ASSOCIATED TAXES',314,267,9,true);L(36,260,297,.6);L(307,260,576,.6);
-  T('Description',42,246,7,true);T('Current',175,246,7,true);T('YTD',247,246,7,true);T('Regular salary',42,228,8);R(money(r.gross),227,228,8);R(money(y.gross),295,228,8);
-  T('Description',314,246,7,true);T('Current',448,246,7,true);T('YTD',526,246,7,true);
-  [['Federal tax',r.fed,y.fed],['Social Security',r.ss,y.ss],['Medicare',r.med,y.med]].forEach(([n,c,z],i)=>{let h=228-i*20;T(n,314,h,8);R(money(c),482,h,8);R(money(z),575,h,8)});
+  T('Description',42,246,7,true);R('Current',227,246,7,true);R('YTD',291,246,7,true);T('Regular salary',42,228,8);R(money(r.gross),227,228,8);R(money(y.gross),291,228,8);
+  T('Description',314,246,7,true);R('Current',482,246,7,true);R('YTD',570,246,7,true);
+  [['Federal tax',r.fed,y.fed],['Social Security',r.ss,y.ss],['Medicare',r.med,y.med]].forEach(([n,c,z],i)=>{let h=228-i*20;T(n,314,h,8);R(money(c),482,h,8);R(money(z),570,h,8)});
   L(36,87,297,.65);L(307,87,576,.65);T('Earnings',42,72,7,true);R(money(r.gross),227,72,8,true);R(money(y.gross),291,72,8,true);T('Taxes',314,72,7,true);R(money(r.fed+r.ss+r.med),482,72,8,true);R(money(y.fed+y.ss+y.med),570,72,8,true);footer();
+ }else if(template==='modern'){
+  const rule=(yy)=>{C(36,yy,540,1.3,[.12,.49,.78]);};
+  T('Earnings Statement',36,757,16,true);T('Pay period: '+short(val('start'))+' - '+short(val('end')),36,739,8);T('Pay date: '+short(pay),36,725,8);
+  T('Company',270,757,8,true);const companyRows=wrap(employer,140,8);lines([employer],270,742,140,8,11,3);const addressTop=742-companyRows.length*11;lines(ea,270,addressTop,140,8,11,5);if(val('employerPhone'))T(val('employerPhone'),270,addressTop-ea.flatMap(v=>wrap(v,140,8)).length*11-3,8);
+  T('Employee',436,757,8,true);fit(employee,436,742,140,8,true);T(ssn,436,728,8);lines(pa,436,714,140,8,11,4);
+  if(!final)T('DRAFT / PRACTICE - NOT ISSUED',36,692,8,true);
+  T('Employee earnings',36,633,9,true);rule(624);T('Description',40,610,8,true);R('Annual pay',250,610,8,true);R('Hours',320,610,8,true);R('Current',435,610,8,true);R('Year to date',572,610,8,true);
+  T('Salary',40,590,8);R(money(num('salary')),250,590,8);R('-',320,590,8);R(money(r.gross),435,590,8);R(money(y.gross),572,590,8);L(36,581,576,.3);T('Gross earnings',40,566,8,true);R(money(r.gross),435,566,8,true);R(money(y.gross),572,566,8,true);
+  T('Employee deductions',36,530,9,true);C(36,521,258,1.3,[.12,.49,.78]);T('Tax / deduction',40,507,7.5,true);R('Current',217,507,7.5,true);R('Year to date',290,507,7.5,true);
+  [['Federal tax',r.fed,y.fed],['Social Security',r.ss,y.ss],['Medicare',r.med,y.med],['Other deductions',r.other,y.other]].forEach(([name,c,z],i)=>{T(name,40,489-i*17,8);R(money(c),217,489-i*17,8);R(money(z),290,489-i*17,8);});
+  T('Employee payment information',318,530,9,true);C(318,521,258,1.3,[.12,.49,.78]);
+  [['Net pay',money(r.net)],['Method',val('paymentMethod')==='check'?'Check preparation':'Direct deposit'],['Account',val('accountLast4')?'****'+val('accountLast4'):'Not supplied'],['Employee ID',val('employeeId')||'-'],['Filing status',val('filing')]].forEach(([label,value],i)=>{T(label,322,502-i*17,8);R(value,572,502-i*17,8);});
+  T('Important notes',36,390,9,true);rule(382);lines([comment||'No important notes entered'],40,366,530,8,12,4);L(36,316,576,.3);
+  T('Summary',36,295,9,true);rule(286);T('Description',40,272,8,true);R('Current',435,272,8,true);R('Year to date',572,272,8,true);
+  [['Gross earnings',r.gross,y.gross],['Taxes and deductions',r.gross-r.net,y.gross-y.net],['Net pay',r.net,y.net]].forEach(([name,c,z],i)=>{T(name,40,253-i*17,8);R(money(c),435,253-i*17,8);R(money(z),572,253-i*17,8);});
+  L(36,201,576,.3);fit(employer,40,180,250,8);lines(ea,40,166,250,8,11,4);
+  T('Advice number:',352,180,8,true);fit(final?val('paymentRef'):'DRAFT - NOT ISSUED',448,180,124,8);T('Pay date:',352,164,8);T(short(pay),448,164,8);
+  T('Deposited to the account of',40,101,8,true);T('Account number',258,101,8,true);R('Amount',572,101,8,true);rule(94);fit(employee,40,78,210,8,true);T(val('accountLast4')?'********'+val('accountLast4'):'Not supplied',258,78,8);R(money(r.net),572,78,9,true);R('NON-NEGOTIABLE',576,48,11,true);footer();
  }else if(template==='voucher'){
   // Traditional payroll voucher: compact monochrome tables and employer benefits.
   const textFit=(value,max=55)=>String(value||'').slice(0,max);
   const companyLine=[employer,'- MAIN -',val('companyCode')||''].filter(Boolean).join(' ');
   T(textFit(employer,65),36,766,9,true);
-  T(textFit(ea.join(', '),90),36,751,7.5);
+  fit(ea.join(', '),36,751,440,7.5);
   R(textFit(val('voucherCode')||val('paymentRef')||'—',20),575,766,8,true);
   R(short(pay),575,751,8);
   L(36,735,576,.8);
-  T('PAYMENT ADVICE',36,721,9,true);R('NON-NEGOTIABLE',575,721,8,true);
+  T('NON-NEGOTIABLE',36,721,8,true);R('Payment reference: '+(final?val('paymentRef'):'DRAFT - NOT ISSUED'),575,721,7.5);
   T('Employee:',48,695,8);T(employee,142,695,10,true);
   pa.slice(0,3).forEach((line,i)=>T(textFit(line,66),142,679-13*i,8));
   T('Payment method:',48,625,8);T(val('paymentMethod')==='check'?'Manual check - not issued':`Direct deposit ${val('accountLast4')?'****'+val('accountLast4'):''}`,142,625,8);
@@ -176,10 +199,10 @@ function documentPdf(){
   if(!final)T('DRAFT - NOT ISSUED',36,27,8,true);
  }else{
   head('Deposit Advice Statement');
-  styledAdvice(36,556,540,148);
+  styledAdvice(36,550,540,165);
   B(36,64,540,476);V(229,64,540,.8);L(36,516,576,.6);
   T('PERSONAL & DEPOSIT INFORMATION',42,524,7.5,true);T('EARNINGS',242,522,9,true);
-  T(employee,42,501,8,true);pa.slice(0,3).forEach((s,i)=>T(s,42,486-i*13,8));T('SSN: '+ssn,42,441,7.5);T('Employee ID: '+(val('employeeId')||'—'),42,427,7.5);T('Period: '+short(val('start'))+' - '+short(val('end')),42,402,7.5);T('Pay date: '+short(pay),42,389,7.5);
+  fit(employee,42,501,180,8,true);lines(pa,42,486,180,8,12,3);T('SSN: '+ssn,42,441,7.5);T('Employee ID: '+(val('employeeId')||'—'),42,427,7.5);T('Period: '+short(val('start'))+' - '+short(val('end')),42,402,7);T('Pay date: '+short(pay),42,389,7.5);
   T('Description',242,500,8,true);R('Current',464,500,8,true);R('YTD',568,500,8,true);L(238,493,575,.6);
   T('Regular salary',242,476,8);R(money(r.gross),464,476,8);R(money(y.gross),568,476,8);
   F(239,443,335,18,.93);T('DEDUCTIONS',244,449,8,true);

@@ -39,6 +39,7 @@ function makePdf(items,title){
  for(const it of items){
   if(it.kind==='line'){ops.push(`${it.dash?'[4 4] 0 d':'[] 0 d'}`,`${it.width||.65} w`,`${it.x} ${it.y} m ${it.x2} ${it.y2} l S`);continue}
   if(it.kind==='rect'){ops.push('0.8 w',`${it.x} ${it.y} ${it.w} ${it.h} re S`);continue}
+  if(it.kind==='colorfill'){ops.push(`${it.rgb.join(' ')} rg`,`${it.x} ${it.y} ${it.w} ${it.h} re f`,'0 0 0 rg');continue}
   if(it.kind==='fill'){ops.push(`${it.gray||.91} g`,`${it.x} ${it.y} ${it.w} ${it.h} re f`,'0 0 0 rg');continue}
   const font=it.italic?'F3':(it.bold?'F2':'F1');ops.push(`BT /${font} ${it.size||8} Tf 1 0 0 1 ${it.x} ${it.y} Tm (${esc(it.text)}) Tj ET`)
  }
@@ -51,7 +52,7 @@ function documentPdf(){
  const r=calculate(),y=projectedYtd(r),final=val('mode')==='final';
  if(!val('employee').trim()||!val('employer').trim())throw Error('Employer and employee names are required.');
  if(final&&val('paymentMethod')==='check')throw Error('Manual check issuance is not enabled. Use draft preview only.');if(final){if(!val('paymentRef').trim()||!val('actualPaid')||!$('verified').checked)throw Error('Finalized statements require verified payment details.');if(val('actualPaid')>iso(new Date()))throw Error('Payment date cannot be in the future.');if(val('actualPaid')!==(val('manualPayDate')||r.payday))throw Error('Reconcile actual and scheduled payment dates.');}
- const I=[],T=(text,x,y,size=8,bold=false,italic=false)=>I.push({kind:'text',text:String(text),x,y,size,bold,italic}),R=(text,right,y,size=8,bold=false)=>{const c=document.createElement('canvas').getContext('2d');c.font=`${bold?'bold ':''}${size}px Helvetica`;T(text,right-c.measureText(String(text)).width,y,size,bold)},L=(x,y,x2,width=.65,dash=false)=>I.push({kind:'line',x,y,x2,y2:y,width,dash}),V=(x,y,y2,width=.65)=>I.push({kind:'line',x,y,x2:x,y2,width}),F=(x,y,w,h,gray=.93)=>I.push({kind:'fill',x,y,w,h,gray}),B=(x,y,w,h)=>I.push({kind:'rect',x,y,w,h});
+ const I=[],T=(text,x,y,size=8,bold=false,italic=false)=>I.push({kind:'text',text:String(text),x,y,size,bold,italic}),R=(text,right,y,size=8,bold=false)=>{const c=document.createElement('canvas').getContext('2d');c.font=`${bold?'bold ':''}${size}px Helvetica`;T(text,right-c.measureText(String(text)).width,y,size,bold)},L=(x,y,x2,width=.65,dash=false)=>I.push({kind:'line',x,y,x2,y2:y,width,dash}),V=(x,y,y2,width=.65)=>I.push({kind:'line',x,y,x2:x,y2,width}),F=(x,y,w,h,gray=.93)=>I.push({kind:'fill',x,y,w,h,gray}),B=(x,y,w,h)=>I.push({kind:'rect',x,y,w,h}),C=(x,y,w,h,rgb)=>I.push({kind:'colorfill',x,y,w,h,rgb});
  const short=s=>s?new Date(s+'T12:00:00Z').toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric',timeZone:'UTC'}):'—';
  const pay=val('manualPayDate')||r.payday, employer=val('employer').trim(),employee=val('employee').trim().toUpperCase(),ssn=val('ssn')?'XXX-XX-'+val('ssn'):'NOT PROVIDED';
  const ea=String(val('employerAddress')||'').split(',').map(s=>s.trim()).filter(Boolean),pa=String(val('address')||'').split(',').map(s=>s.trim()).filter(Boolean);
@@ -59,6 +60,24 @@ function documentPdf(){
  const head=(title)=>{T(title,36,756,15,true);R(`PERIOD ${y.n} OF ${effectivePeriods()}`,574,758,8,true);L(36,747,576,1);if(!final){F(36,723,540,17,.92);T('DRAFT / PRACTICE - NOT ISSUED',43,728,8,true)}};
  const advice=(top)=>{const yy=top?670:159;L(36,yy+8,576,.75,true);T('PAYMENT ADVICE',38,yy-9,9,true);R('NON-NEGOTIABLE',575,yy-9,8,true);T(employer,38,yy-29,8.5,true);T(employee,38,yy-46,8.5);T('Advice / payment reference',310,yy-29,7);T(final?val('paymentRef'):'DRAFT - NOT ISSUED',310,yy-42,8);T('Pay date',310,yy-55,7);T(short(pay),365,yy-55,8);L(36,yy-65,576,.5);T('Deposited to the account of',38,yy-79,7);T('Payment method',310,yy-79,7);R('Amount',574,yy-79,7);T(employee,38,yy-95,8,true);T(val('paymentMethod')==='check'?'Manual check (not issued)':`Direct deposit / ${val('accountType')} ${val('accountLast4')?'****'+val('accountLast4'): '(account not provided)'}`,310,yy-95,7.5);R(money(r.net),574,yy-95,9,true)};
  const footer=()=>{if(!final){T('SAMPLE / DRAFT - not evidence of wages paid',36,25,7)};};
+ const adviceStyle=val('adviceStyle')||'blue';
+ const securityHeader=(x,top,w)=>{T('EMPLOYER-ISSUED PAYROLL DOCUMENT  |  PAYMENT DETAILS SUBJECT TO EMPLOYER VERIFICATION',x,top,6.1,true);L(x,top-7,x+w,.5)};
+ const styledAdvice=(x,bottom,w,h)=>{
+   const cream=adviceStyle==='cream';
+   C(x,bottom,w,h,cream?[.984,.974,.933]:[.83,.91,.985]);
+   B(x,bottom,w,h);
+   C(x,bottom+h-23,w,23,cream?[.92,.90,.82]:[.08,.16,.32]);
+   // White-on-dark headers are intentionally avoided by keeping label on the light interior.
+   T(cream?'EMPLOYER PAYMENT ADVICE':'DIRECT DEPOSIT ADVICE',x+12,bottom+h-39,10,true);
+   T('NON-NEGOTIABLE  |  NOT A CHECK',x+w-174,bottom+h-39,7.5,true);
+   T(employer,x+12,bottom+h-60,9,true);
+   ea.slice(0,2).forEach((v,i)=>T(v.slice(0,58),x+12,bottom+h-73-i*12,7.4));
+   T('PAY DATE',x+w-146,bottom+h-60,7,true);T(short(pay),x+w-86,bottom+h-60,8,true);
+   T('EMPLOYEE',x+12,bottom+39,7,true);T(employee,x+12,bottom+24,9,true);
+   T('ACCOUNT',x+12,bottom+10,7);T(val('accountLast4')?'****'+val('accountLast4'):'Not supplied',x+62,bottom+10,7.5);
+   T('NET PAY',x+w-146,bottom+39,8,true);R(money(r.net),x+w-12,bottom+20,13,true);
+   securityHeader(x+12,bottom-16,w-24);
+ };
  const template=val('template');
  if(template==='classic'){
   F(36,743,265,30,.91);T('CO.      FILE      DEPT      CLOCK      VCHR. NO',42,761,7.5,true);T([val('companyCode'),val('fileCode'),val('deptCode'),val('clockCode'),val('voucherCode')].map(x=>(x||'—').slice(0,7).padEnd(10,' ')).join(' ').slice(0,53),42,750,8);if(val('extraCode'))T(val('extraCode').slice(0,8),303,750,7);
@@ -78,7 +97,7 @@ function documentPdf(){
   T(`Pay period ${y.n} of ${effectivePeriods()}`,36,281,7.5);T('Statement date: '+short(val('statementDate')),36,267,7.5);
   advice(false);footer();
  }else if(template==='summary'){
-  head('Payroll Summary');advice(true);
+  head('Payroll Summary');styledAdvice(36,550,540,152);
   T('EMPLOYEE INFORMATION',36,525,9,true);L(36,519,576,.8);
   const cols=[36,142,248,370,479];[['Employee',employee],['Employee ID',val('employeeId')||'—'],['Period start',short(val('start'))],['Period end',short(val('end'))],['Pay date',short(pay)]].forEach(([k,v],i)=>{T(k,cols[i]+3,503,7,true);T(String(v).slice(0,18),cols[i]+3,486,7.3)});
   F(36,441,540,17,.9);T('IMPORTANT NOTES',42,447,8,true);(commentLines.length?commentLines:['No important notes entered']).forEach((s,i)=>T(s.slice(0,90),42,428-i*13,7.5));
@@ -89,9 +108,54 @@ function documentPdf(){
   T('Description',314,246,7,true);T('Current',448,246,7,true);T('YTD',526,246,7,true);
   [['Federal tax',r.fed,y.fed],['Social Security',r.ss,y.ss],['Medicare',r.med,y.med]].forEach(([n,c,z],i)=>{let h=228-i*20;T(n,314,h,8);R(money(c),482,h,8);R(money(z),575,h,8)});
   L(36,95,576,.65);T('NET PAY',42,79,9,true);R(money(r.net),482,79,9,true);R(money(y.net),575,79,9,true);footer();
+ }else if(template==='voucher'){
+  // Traditional payroll voucher: compact monochrome tables and employer benefits.
+  const textFit=(value,max=55)=>String(value||'').slice(0,max);
+  const companyLine=[employer,'- MAIN -',val('companyCode')||''].filter(Boolean).join(' ');
+  T(textFit(employer,65),36,766,9,true);
+  T(textFit(ea.join(', '),90),36,751,7.5);
+  R(textFit(val('voucherCode')||val('paymentRef')||'—',20),575,766,8,true);
+  R(short(pay),575,751,8);
+  L(36,735,576,.8);
+  T('PAYMENT ADVICE',36,721,9,true);R('NON-NEGOTIABLE',575,721,8,true);
+  T('Pay to the order of:',36,695,8);T(employee,142,695,10,true);
+  pa.slice(0,3).forEach((line,i)=>T(textFit(line,66),142,679-13*i,8));
+  T('Payment method:',36,625,8);T(val('paymentMethod')==='check'?'Manual check - not issued':`Direct deposit ${val('accountLast4')?'****'+val('accountLast4'):''}`,142,625,8);
+  T('Amount:',430,625,8);R(money(r.net),575,625,10,true);
+  L(36,602,576,.8,true);
+  T(textFit(companyLine,65),36,588,8,true);
+  R('Voucher: '+textFit(val('voucherCode')||'—',16),575,588,7.5);
+  F(36,554,540,24,.91);
+  T('EMPLOYEE INFORMATION',42,562,8,true);T('CHECK DATE',274,562,7,true);T('PERIOD START',367,562,7,true);T('PERIOD END',482,562,7,true);
+  T(textFit(employee+' ('+(val('employeeId')||'—')+')',37),42,542,8);
+  T(short(pay),270,542,8);T(short(val('start')),365,542,8);T(short(val('end')),479,542,8);
+  T('Federal tax status: '+val('filing'),40,525,7.5);T('SSN: '+ssn,352,525,7.5);
+  L(36,514,576,.7);
+  T('CURRENT EARNINGS DETAIL',42,499,9,true);T('DEDUCTIONS / TAXES',348,499,9,true);
+  V(334,322,511,.8);
+  F(36,469,298,19,.92);F(335,469,241,19,.92);
+  T('Description',42,475,7.5,true);T('Rate',177,475,7.5,true);T('Hours',228,475,7.5,true);T('Amount',277,475,7.5,true);
+  T('Description',343,475,7.5,true);T('Amount',466,475,7.5,true);T('YTD',542,475,7.5,true);
+  T('Salary',42,451,8);R(money(num('salary')),221,451,7.5);R('—',259,451,8);R(money(r.gross),328,451,8);
+  [['Federal tax',r.fed,y.fed],['Medicare',r.med,y.med],['Social Security',r.ss,y.ss],['Other deductions',r.other,y.other]].forEach(([n,c,z],i)=>{let h=451-21*i;T(n,343,h,8);R(money(c),510,h,8);R(money(z),574,h,8)});
+  L(36,322,576,.8);T('EARNINGS TOTAL',42,308,8,true);R(money(r.gross),327,308,8,true);T('DEDUCTIONS TOTAL',342,308,8,true);R(money(r.gross-r.net),574,308,8,true);
+  F(36,262,540,32,.92);T('DIRECT DEPOSIT / PAYMENT',42,275,8,true);T('NET PAY',347,275,9,true);R(money(r.net),571,272,13,true);
+  T('Account: '+(val('accountLast4')?'****'+val('accountLast4'):'not provided'),42,247,8);
+  T('YTD GROSS: '+money(y.gross),42,232,8);T('YTD NET: '+money(y.net),345,232,8);
+  L(36,219,576,.8);
+  T('Y-T-D EARNINGS',42,205,8.5,true);T('PAID TIME OFF',223,205,8.5,true);T('EMPLOYER CONTRIBUTIONS',394,205,8.5,true);
+  V(211,91,217,.6);V(384,91,217,.6);
+  T('Salary',42,184,8);R(money(y.gross),201,184,8);
+  T('PTO hours',220,184,8);R(String(num('ptoBalance').toFixed(2)),371,184,8);
+  T('Sick hours',220,165,8);R(String(num('sickBalance').toFixed(2)),371,165,8);
+  T(textFit(val('contribLabel')||'None',19),391,184,8);R(money(num('contribCurrent')),493,165,7.5);R(money(num('contribYtd')),572,165,7.5);
+  T('Current',453,183,7);T('YTD',543,183,7);
+  L(36,92,576,.65);T('Totals:',42,79,8,true);R(money(y.gross),201,79,8,true);R(money(num('contribCurrent')),493,79,8,true);R(money(num('contribYtd')),572,79,8,true);
+  T('Payroll Desk report | Statement date: '+short(val('statementDate')),36,44,7);
+  if(!final)T('DRAFT - NOT ISSUED',36,27,8,true);
  }else{
   head('Deposit Advice Statement');
-  F(36,556,540,148,.88);T(val('paymentMethod')==='check'?'PAYMENT SUMMARY - CHECK NOT ISSUED':'DIRECT DEPOSIT ADVICE',48,680,10,true);T(employer,48,655,9,true);ea.slice(0,3).forEach((s,i)=>T(s,48,641-i*12,8));T('Pay Date',419,660,8);R(short(pay),563,660,10,true);T(val('paymentMethod')==='check'?'Payable to':'Deposited to '+(val('accountLast4')?'****'+val('accountLast4'):''),48,592,8);T(employee,48,576,9,true);T('NET PAY',418,593,8,true);R(money(r.net),561,576,12,true);
+  styledAdvice(36,556,540,148);
   L(36,540,576,1);V(229,97,529,.8);
   T('PERSONAL & DEPOSIT INFORMATION',42,522,8,true);T('EARNINGS',242,522,9,true);
   T(employee,42,501,8,true);pa.slice(0,3).forEach((s,i)=>T(s,42,486-i*13,8));T('SSN: '+ssn,42,441,7.5);T('Employee ID: '+(val('employeeId')||'—'),42,427,7.5);T('Period: '+short(val('start'))+' - '+short(val('end')),42,402,7.5);T('Pay date: '+short(pay),42,389,7.5);
@@ -110,13 +174,13 @@ let activeUrl=null;function generate(download){try{let blob=documentPdf();if(act
 $('frequency').addEventListener('change',()=>{if(val('frequency')!=='custom')$('annualPeriods').value=val('frequency');syncPeriod();update()});$('annualPeriods').addEventListener('input',()=>{syncPeriod();update()});$('end').addEventListener('input',()=>{syncPeriod();update()});$('autoPeriod').addEventListener('change',()=>{syncPeriod();update()});$('overrideCurrent').addEventListener('change',()=>{$('manualCurrent').classList.toggle('hidden',!$('overrideCurrent').checked);update()});$('mode').addEventListener('change',()=>{$('finalFields').classList.toggle('hidden',val('mode')!=='final');update()});document.querySelectorAll('input,select').forEach(e=>e.addEventListener('input',update));$('preview').addEventListener('click',()=>generate(false));$('download').addEventListener('click',()=>generate(true));if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});syncPeriod();update();
 
 // V9 company profiles: browser-only nonsensitive development records.
-const companyFields=['employer','employerPhone','employerAddress','companyCode','fileCode','deptCode','clockCode','voucherCode','extraCode','employee','employeeId','ssn','address','salary','frequency','annualPeriods','start','end','filing','credits','other','deductions','extra','step2','postTax','periodNumber','autoPeriod','ytdSource','overrideCurrent','manualFed','manualSS','manualMed','manualOther','manualYtdGross','manualYtdFed','manualYtdSS','manualYtdMed','manualYtdOther','comments','statementDate','manualPayDate','pdfTitle','pdfCreator','pdfProducer','template','accountType','accountLast4','bankName','paymentMethod'];
+const companyFields=['employer','employerPhone','employerAddress','companyCode','fileCode','deptCode','clockCode','voucherCode','extraCode','employee','employeeId','ssn','address','salary','frequency','annualPeriods','start','end','filing','credits','other','deductions','extra','step2','postTax','periodNumber','autoPeriod','ytdSource','overrideCurrent','manualFed','manualSS','manualMed','manualOther','manualYtdGross','manualYtdFed','manualYtdSS','manualYtdMed','manualYtdOther','comments','statementDate','manualPayDate','pdfTitle','pdfCreator','pdfProducer','template','accountType','accountLast4','bankName','ptoBalance','sickBalance','contribLabel','contribCurrent','contribYtd','paymentMethod','adviceStyle'];
 const storageKey='payrollDeskV9Companies';let activeCompany='company1';
 const readProfiles=()=>{try{return JSON.parse(localStorage.getItem(storageKey)||'{}')}catch{return {}}};
 function captureCompany(){const obj={};for(const id of companyFields){const e=$(id);if(e)obj[id]=e.type==='checkbox'?e.checked:e.value}return obj}
 function saveProfile(){const all=readProfiles();all[activeCompany]=captureCompany();localStorage.setItem(storageKey,JSON.stringify(all));refreshCompanies();$('status').textContent='Company profile saved on this device.'}
 function refreshCompanies(){const all=readProfiles();const sel=$('companySwitch');const keys=[...new Set(['company1','company2',...Object.keys(all)])];sel.replaceChildren();for(const key of keys){const opt=document.createElement('option');opt.value=key;opt.textContent=(all[key]?.employer|| (key==='company1'?'Company 1':key==='company2'?'Company 2':'New company')).slice(0,70);sel.append(opt)}sel.value=activeCompany;$('dashCompany').textContent=(all[activeCompany]?.employer||$('employer').value||'Company').slice(0,18)}
-function loadProfile(key){const all=readProfiles();const d=all[key]||{};for(const id of companyFields){const e=$(id);if(!e)continue;if(e.type==='checkbox')e.checked=Boolean(d[id]);else e.value=d[id]??e.defaultValue}if(!all[key]&&key!=='company1'){for(const id of ['employer','employerPhone','employerAddress','employee','address','employeeId','ssn','accountLast4','bankName'])$(id).value='';$('salary').value='0';$('manualYtdGross').value='0';}activeCompany=key;$('companySwitch').value=key;$('manualCurrent').classList.toggle('hidden',!$('overrideCurrent').checked);$('finalFields').classList.toggle('hidden',val('mode')!=='final');refreshCompanies();syncPeriod();update()}
+function loadProfile(key){const all=readProfiles();const d=all[key]||{};for(const id of companyFields){const e=$(id);if(!e)continue;if(e.type==='checkbox')e.checked=Boolean(d[id]);else e.value=d[id]??e.defaultValue}if(!all[key]&&key!=='company1'){for(const id of ['employer','employerPhone','employerAddress','employee','address','employeeId','ssn','accountLast4','bankName','ptoBalance','sickBalance','contribLabel','contribCurrent','contribYtd'])$(id).value='';$('salary').value='0';$('manualYtdGross').value='0';}activeCompany=key;$('companySwitch').value=key;$('manualCurrent').classList.toggle('hidden',!$('overrideCurrent').checked);$('finalFields').classList.toggle('hidden',val('mode')!=='final');refreshCompanies();syncPeriod();update()}
 $('companySwitch').addEventListener('change',e=>{const next=e.target.value;const all=readProfiles();all[activeCompany]=captureCompany();localStorage.setItem(storageKey,JSON.stringify(all));loadProfile(next)});
 $('addCompany').addEventListener('click',()=>{const name=prompt('Name of new company:');if(!name||!name.trim())return;const all=readProfiles();all[activeCompany]=captureCompany();const key='company_'+Date.now().toString(36);all[key]={employer:name.trim()};localStorage.setItem(storageKey,JSON.stringify(all));loadProfile(key);$('status').textContent='New company profile created. Fill in its information and save.'});
 $('removeCompany').addEventListener('click',()=>{if(['company1','company2'].includes(activeCompany)){alert('The original two company slots cannot be removed. You can edit their details.');return}if(!confirm('Remove this company profile from local storage? Export a backup first if needed.'))return;const all=readProfiles();delete all[activeCompany];localStorage.setItem(storageKey,JSON.stringify(all));loadProfile('company1');$('status').textContent='Company profile removed.'});

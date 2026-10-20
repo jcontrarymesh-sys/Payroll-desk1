@@ -74,7 +74,23 @@ function documentPdf(){
  const I=[],T=(text,x,y,size=8,bold=false,italic=false)=>I.push({kind:'text',text:String(text),x,y,size,bold,italic}),R=(text,right,y,size=8,bold=false)=>I.push({kind:'text',text:String(text),right,y,size,bold}),L=(x,y,x2,width=.65,dash=false)=>I.push({kind:'line',x,y,x2,y2:y,width,dash}),V=(x,y,y2,width=.65)=>I.push({kind:'line',x,y,x2:x,y2,width}),F=(x,y,w,h,gray=.93)=>I.push({kind:'fill',x,y,w,h,gray}),B=(x,y,w,h)=>I.push({kind:'rect',x,y,w,h}),C=(x,y,w,h,rgb)=>I.push({kind:'colorfill',x,y,w,h,rgb});
  const short=s=>s?new Date(s+'T12:00:00Z').toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric',timeZone:'UTC'}):'—';
  const pay=val('manualPayDate')||r.payday, employer=val('employer').trim(),employee=val('employee').trim().toUpperCase(),ssn=val('ssn')?'XXX-XX-'+val('ssn'):'NOT PROVIDED';
- const addressParts=text=>{const lines=String(text||'').split(/[,\n]+/).map(s=>s.trim()).filter(Boolean);if(lines.length>1&&/^[A-Za-z]{2}\s+\d{5}(?:-\d{4})?$/.test(lines.at(-1)))lines.splice(-2,2,lines.at(-2)+', '+lines.at(-1));return lines;};
+ const addressParts=text=>{
+  const original=String(text||'').trim();if(!original)return [];
+  const postal=original.match(/\b([A-Za-z]{2})\s+(\d{5}(?:-\d{4})?)\s*$/);
+  const states=new Set('AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY AS GU MP PR VI AA AE AP'.split(' '));
+  if(!postal||!states.has(postal[1].toUpperCase()))return original.split(/[,\n]+/).map(s=>s.trim()).filter(Boolean);
+  const end=postal[1].toUpperCase()+' '+postal[2],body=original.slice(0,postal.index).replace(/[,\s]+$/,'');
+  const parts=body.split(/[,\n]+/).map(s=>s.trim()).filter(Boolean);if(!parts.length)return [end];
+  const unit='((?:apt\\.?|apartment|suite|ste\\.?|unit)\\s*#?\\s*[A-Za-z0-9-]+|#\\s*[A-Za-z0-9-]+)';
+  if(parts.length>1){let city=parts.pop();const extra=city.match(new RegExp('^'+unit+'\\s+([A-Za-z].*)$','i'));if(extra){parts[parts.length-1]+=' '+extra[1];city=extra[2];}return [...parts,city+', '+end];}
+  const line=parts[0];
+  const withUnit=line.match(new RegExp('^(.+?\\s+'+unit+')\\s+([A-Za-z].*)$','i'));
+  if(withUnit)return [withUnit[1],withUnit[3]+', '+end];
+  const box=line.match(/^(P\.?\s*O\.?\s*Box\s+\S+)\s+([A-Za-z].*)$/i);if(box)return [box[1],box[2]+', '+end];
+  const street=line.match(/^(.+\b(?:street|st|avenue|ave|road|rd|drive|dr|boulevard|blvd|lane|ln|court|ct|way|place|pl|circle|cir|terrace|ter|trail|trl|parkway|pkwy|loop|pike|pass|square|sq|run)\.?(?:\s+(?:N|S|E|W|NE|NW|SE|SW))?)\s+([A-Za-z].*)$/i);
+  if(street)return [street[1],street[2]+', '+end];
+  return [line+', '+end];
+ };
  const ea=addressParts(val('employerAddress')),pa=addressParts(val('address'));
  const measure=(text,size=8,bold=false,italic=false)=>{const c=document.createElement('canvas').getContext('2d');c.font=`${italic?'italic ':''}${bold?'bold ':''}${size}px Helvetica`;return c.measureText(ascii(text)).width;};
  const fit=(text,x,yy,width,size=8,bold=false,italic=false)=>{let fs=size;while(measure(text,fs,bold,italic)>width&&fs>6)fs-=.25;if(measure(text,fs,bold,italic)>width)throw Error('Text is too long for this layout: '+String(text).slice(0,28));T(text,x,yy,fs,bold,italic);};

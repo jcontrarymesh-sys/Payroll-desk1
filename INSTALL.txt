@@ -1,25 +1,11 @@
-Payroll Desk - autosave and persistent employee/statement IDs
+Payroll Desk - address row formatting fix
 
-BEFORE INSTALLING
-In the existing app, tap Save company profile once for the company whose current entries you want to keep. Export a backup if desired. Entries that were already lost without being saved cannot be recovered by this update.
+Upload and replace app.js, index.html and sw.js in the main folder of the Payroll-desk1 repository. After deployment finishes, reload Safari or reopen the installed app. Generate a new PDF; existing PDF files will not change.
 
-INSTALL
-Upload and replace app.js, index.html and sw.js in the main folder of the Payroll-desk1 repository. Upload the files themselves, not this ZIP or an enclosing folder. Keep your current PDF library files in the main folder. After deployment finishes, reload the same website in Safari or reopen the installed app.
+The screenshot address now renders as:
+1309 Main St Apt 1503
+Dallas, TX 75202
 
-AUTOSAVE
-Changes save automatically after a short typing pause and when the app goes into the background or the page closes. The app reopens the last selected company and restores its saved payroll form entries, dates, selected template, source settings and payment fields. Company data stays separate. Logos save immediately after upload/removal. Manual Save company and backup/import remain available.
-Storage belongs to this browser/installed app on this device and website address. It does not sync between devices, private browsing sessions, Safari and an independently stored installed app. Clearing website data removes local profiles; keep backups.
+The formatter recognizes common street/unit endings and keeps city, state and ZIP together. Existing comma-separated and multiline addresses remain supported. The employee address input also accepts explicit line breaks for unusual addresses. The stored address is not rewritten by the PDF formatter.
 
-FILE NUMBER
-Enter the employee ID, then use Generate / restore file number. An existing file number is retained. Otherwise the company allocates the next available six-digit file number (000001, 000002, ...). It stays tied to that employee ID. Reopening the app or changing pay periods does not allocate another file number.
-Existing manually entered file numbers are retained and can be edited.
-
-ADVICE NUMBER
-Enter the employee ID and pay-period dates, then use Generate / restore advice number. The format is YYYYMMDD-NNNN, using the device's actual local generation date and a company-specific daily sequence. Example: 20261020-0001, then 20261020-0002.
-The saved advice number is tied to the employee ID and pay-period dates. Reopening, re-exporting, or pressing Generate / restore again returns the same saved number. A different employee or pay period gets a different advice number.
-The internal advice number is separate from the recorded payment confirmation / ACH reference. Existing payment checks remain in place. Where a template already displays an advice number, it uses the new field; legacy records without one continue using their existing reference.
-Identifier maps and counters are included in company backups. Counters belong to this company/browser store. A shared backend is needed for coordinated numbering across independent devices. Modern browsers use a shared browser lock when allocating numbers in multiple tabs.
-
-VALIDATION
-Passed app-level DOM/VM checks for typing autosave, page-hide/background save, reload into a new session, last-company restoration, company isolation, saved payment fields, legacy file numbers, sequential assignment, repeated/reopened advice number stability, per-period advice reuse, separate payment reference, and backup coverage.
-The earlier YTD footer removal remains included. Payroll amount formulas are unchanged. Device testing of Safari/PWA lifecycle behavior remains outstanding.
+This patch retains automatic saving, persistent file/advice numbers and the removal of the YTD source footer. Other PDF sections and amount formulas are unchanged. This package is ready to upload; it has not been deployed by the assistant.

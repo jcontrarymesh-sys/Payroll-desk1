@@ -225,7 +225,6 @@ function documentPdf(){
   L(36,186,229,.6);F(37,164,191,22,.92);T('MESSAGES / COMMENTS',42,172,8,true);(commentLines.length?commentLines:['No messages entered']).forEach((s,i)=>T(s.slice(0,34),42,150-i*13,7.5));
   T('Statement date: '+short(val('statementDate')),242,134,8);T(`Pay period ${y.n} of ${effectivePeriods()}`,242,120,8);footer();
  }
- T(y.estimated?'YTD SOURCE: PROJECTED - rounded current-period amounts x period count; not reconciled pay history.':'YTD SOURCE: MANUALLY ENTERED TOTALS',36,12,6.5);
  return makePdf(I,val('pdfTitle').trim()||(final?'Earnings Statement':'Draft Earnings Statement'));
 }
 let activeUrl=null;async function generate(download){const previewWindow=download?null:window.open('','_blank');try{let blob=await documentPdf();if(activeUrl)URL.revokeObjectURL(activeUrl);activeUrl=URL.createObjectURL(blob);if(download){let a=document.createElement('a');a.href=activeUrl;a.download=`payroll_${val('employee').trim().replace(/[^a-z0-9]+/gi,'_')}_${val('end')}_${val('mode')}.pdf`;document.body.append(a);a.click();a.remove();$('status').textContent='PDF generated. Use Files or Share to save it.'}else{if(previewWindow)previewWindow.location.href=activeUrl;$('status').textContent=previewWindow?'PDF preview opened in a new tab.':'Preview was blocked by the browser. Use Save PDF.'}}catch(e){if(previewWindow)previewWindow.close();$('status').textContent=e.message}}

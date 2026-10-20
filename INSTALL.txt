@@ -1,13 +1,7 @@
-Payroll Desk PDF loading repair - V9.11.1
+Payroll Desk - remove the YTD source footer from app exports
 
-CAUSE CONFIRMED ON THE LIVE SITE
-The app requests vendor/pdf-lib.min.js and vendor/fontkit.min.js; both return HTTP 404. The uploaded libraries are actually at pdf-lib.min.js and fontkit.min.js in the main site folder. Both deployed files match the tested library copies.
+Replace app.js, index.html and sw.js in the main folder of your Payroll-desk1 GitHub repository with these three files. Upload the files themselves, not the ZIP or an enclosing folder. After GitHub Pages finishes deploying, reload the website in Safari; close and reopen the home-screen app if needed. Generate a new PDF.
 
-INSTALL
-1. Extract this ZIP.
-2. Upload and replace these FOUR files in the main folder of the Payroll-desk1 GitHub repository: index.html, w2.html, offer.html, sw.js. Upload the files themselves, not this ZIP or a new enclosing folder.
-3. Keep your existing pdf-lib.min.js and fontkit.min.js beside index.html. No library files need to be moved for this patch.
-4. Wait for the GitHub Pages deployment to finish. Open the website in Safari, reload, then close and reopen the home-screen app if you use it.
-5. Generate a fresh PDF. Check payroll statements, W-2 exports and offers.
+The YTD source footer is removed from all five statement templates. No replacement text or label is added. The exporter, company data, entered values and other document content are unchanged. The updated script URL and offline cache ensure the revised app.js is fetched.
 
-This patch changes script paths on the three document pages and refreshes the offline cache identifier and paths. It does not change payroll entries or company profiles. The live website was inspected; this ZIP has not been uploaded to your GitHub repository by the assistant.
+This package is ready to upload; it has not been deployed to your repository by the assistant.

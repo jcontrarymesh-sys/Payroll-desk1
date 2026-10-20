@@ -1,11 +1,24 @@
-Payroll Desk - address row formatting fix
+Payroll Desk - period-number control and review highlights
 
-Upload and replace app.js, index.html and sw.js in the main folder of the Payroll-desk1 repository. After deployment finishes, reload Safari or reopen the installed app. Generate a new PDF; existing PDF files will not change.
+INSTALL
+Save the current company once and optionally export a backup. Extract the ZIP and replace app.js, index.html and sw.js in the main folder of Payroll-desk1. After GitHub Pages deployment finishes, reload the website in Safari or close/reopen the installed app.
 
-The screenshot address now renders as:
-1309 Main St Apt 1503
-Dallas, TX 75202
+USE
+For the 24-period schedule, choose Payroll year and then Pay period number 1–24. Period 1 is January 1–15; period 2 is January 16–31; period 18 is September 16–30; period 19 is October 1–15; period 24 is December 16–31. February handles leap years.
+Changing the period updates its start/end, banking-calendar payday and processing deadline, statement date and internal advice number. A previously saved advice number for the employee/period is reused. Employee file and clock numbers stay stable.
+Calculated YTD follows the selected period. To use this for repeated constant-pay projections, select the calculated YTD source once. Manually entered YTD is stored with its specific period; new periods need their own entered totals. The app does not silently change the YTD source.
 
-The formatter recognizes common street/unit endings and keeps city, state and ZIP together. Existing comma-separated and multiline addresses remain supported. The employee address input also accepts explicit line breaks for unusual addresses. The stored address is not rewritten by the PDF formatter.
+REVIEW HIGHLIGHTS
+Blue outlines show automatically updated fields. Amber outlines identify items to review: employee file/clock number, PTO/sick balances, contributions, deposit account, entered totals and payment details. Earlier periods also highlight salary, W-4 settings and employee address. These are nonblocking reminders; Clear review highlights removes them after review. They are never drawn on the PDF.
+When changing to a previously unsaved period, the old period's actual-payment confirmation is cleared. The existing final-statement payment validation remains unchanged. Returning to a saved period restores its entered balances, overrides and confirmation fields.
+The existing company profile stores period snapshots, identifiers and review state; backups include them. Autosave continues to reopen the last company and selected period.
 
-This patch retains automatic saving, persistent file/advice numbers and the removal of the YTD source footer. Other PDF sections and amount formulas are unchanged. This package is ready to upload; it has not been deployed by the assistant.
+SPACING
+In the classic template, the employee name-to-address baseline gap is now 16 points, matching the first-row spacing in the employer block. Address rows continue at 14-point spacing. The employer phone remains its own row.
+
+PDF EXPORT
+Exports are newly created PDFs, rather than edits to previous files. The actual export time is recorded in CreationDate and ModDate. Creator and Producer remain the actual software identity. No review highlighting or new notices are added to PDF pages. Existing footer removal, embedded fonts, address parsing and device-neutral metadata remain included.
+
+VALIDATION
+Passed all 24 period mappings, leap-year dates, weekend-adjusted payday and processing deadlines, linked statement dates, calculated YTD updates, stable advice IDs, fixed employee file/clock IDs, period-specific recorded values, restored payment details, review state persistence, clearing reminders, company isolation, autosave regression checks and script/cache checks. Generated/rendered all five PDF templates for period 19; verified dates, projected totals, embedded fonts, page bounds, employee spacing and absence of review UI in the PDFs.
+Browser/device testing remains outstanding. This ZIP is ready to upload; it has not been deployed to your GitHub repository by the assistant.

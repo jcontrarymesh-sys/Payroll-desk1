@@ -1,0 +1,11 @@
+{
+  "name": "payroll-desk",
+  "version": "9.11.1",
+  "private": true,
+  "scripts": {
+    "test": "node testing/run.cjs"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "0.1.100"
+  }
+}

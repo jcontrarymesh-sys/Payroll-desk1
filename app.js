@@ -163,7 +163,7 @@ function documentPdf(){
   T('Salary',36,501,8);R(money(num('salary')),157,501,8);R('-',188,501,8);R(money(r.gross),238,501,8);R(money(y.gross),305,501,8);
   F(103,468,139,22,.92);T('Gross Pay',108,476,8,true);R(money(r.gross),237,476,9,true);L(103,468,242,.5);
   T('Benefits / information',326,525,8.5,true);R('This period',494,525,7.5,true);R('Year to date',576,525,7.5,true);L(326,518,576,.65);
-  const benefit=val('contribLabel').trim();if(benefit){fit(benefit,326,501,114,8);R(money(num('contribCurrent')),494,501,8);R(money(num('contribYtd')),576,501,8);}else{T('No other benefits or information',366,478,8);T('at this time.',413,463,8);}
+  const benefit=val('contribLabel').trim();if(benefit){fit(benefit,326,501,114,8);R(money(num('contribCurrent')),494,501,8);R(money(num('contribYtd')),576,501,8);}
   T('PTO balance',326,480,8);R(num('ptoBalance').toFixed(2)+' hrs',576,480,8);T('Deductions',36,411,8.5,true);R('Amount',238,411,8,true);R('Year to Date',305,411,8,true);L(36,404,306,.65);
   [['FICA - Medicare',r.med,y.med],['FICA - Social Security',r.ss,y.ss],['Federal Tax',r.fed,y.fed],['Other deductions',r.other,y.other]].forEach(([name,c,z],i)=>{const yy=386-i*19;T(name,40,yy,8);R(money(c===0?0:-c),238,yy,8);R(money(z),305,yy,8);});
   F(103,286,139,22,.92);T('Net Pay',108,294,8,true);R(money(r.net),237,294,9,true);T(val('accountType')+' deposit',108,272,8);R(money(r.net),238,272,8);

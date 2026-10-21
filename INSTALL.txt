@@ -1,3 +1,3 @@
-Replace app.js, index.html, and sw.js in the Payroll-desk1 repository with these files. Wait for GitHub Pages to finish deploying, then reload the app.
+Replace app.js, index.html, and sw.js in the Payroll-desk1 repository, wait for deployment, then reload.
 
-PDF downloads now use PERIOD-END_EMPLOYEE.pdf, for example 2026-09-30_JASON_T_DOMINO.pdf. The payroll_ prefix and draft/final filename suffix are removed. PDF contents and generation rules are unchanged.
+Voucher and advice numbers are linked: typing or clearing either updates both. Generated advice numbers fill both. Numbers save with the employee and period and restore when reopening or switching periods. Existing profiles use their advice number when present, otherwise their voucher number. Payment confirmation remains separate.

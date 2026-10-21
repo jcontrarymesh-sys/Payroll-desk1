@@ -33,7 +33,7 @@ Title: document type and identifying employee/date or tax year.
 Subject: pay period, offer date or tax year.
 Keywords: document category, employer and Payroll Desk.
 Creator: Payroll Desk 9.12.0.
-Producer: Payroll Desk 9.12.0 | pdf-lib 1.17.1.
+Producer (configured for post-integration use): Payroll Desk 9.12.0 | QuestPDF.
 CreationDate and ModDate: actual export time. These are independent of historical pay dates or tax years. Regenerating a document creates a new export timestamp. Custom legacy Creator/Producer descriptions no longer override the actual software identity.
 Metadata and visual consistency are not verification guarantees. PDFs are not digitally signed.
 

@@ -4,7 +4,7 @@ const bytes=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 async function create(options={}){
  const {PDFDocument,rgb}=PDFLib,doc=await PDFDocument.create();doc.registerFontkit(fontkit);
  const fonts={};for(const [key,data]of Object.entries(PayrollFonts))fonts[key]=await doc.embedFont(bytes(data),{subset:true});
- const now=new Date();doc.setTitle(options.title||'Payroll document');doc.setAuthor(options.author||'');doc.setSubject(options.subject||'');doc.setKeywords(Array.from(options.keywords||['Payroll Desk']));doc.setCreator('Payroll Desk 9.12.0');doc.setProducer('Payroll Desk 9.12.0 | pdf-lib 1.17.1');doc.setCreationDate(now);doc.setModificationDate(now);
+ const now=new Date();doc.setTitle(options.title||'Payroll document');doc.setAuthor(options.author||'');doc.setSubject(options.subject||'');doc.setKeywords(Array.from(options.keywords||['Payroll Desk']));doc.setCreator('Payroll Desk 9.12.0');doc.setProducer('Payroll Desk 9.12.0 | QuestPDF');doc.setCreationDate(now);doc.setModificationDate(now);
  const page=doc.addPage([612,792]);
  const fontFor=i=>i.italic?fonts.italic:i.bold?fonts.bold:fonts.regular;
  function draw(items,target=page){for(const i of items){

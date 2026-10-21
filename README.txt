@@ -1,4 +1,4 @@
-AUDIT CORRECTIONS IN V9.11.1
+AUDIT CORRECTIONS IN V9.12.0
 - Projected YTD gross now uses rounded current gross x period count, matching the existing projection convention for taxes and deductions.
 - Every statement identifies manually entered versus projected YTD totals.
 - Zero deductions display $0.00, and the checking/savings deposit allocation displays its amount without an artificial minus sign.
@@ -6,14 +6,14 @@ AUDIT CORRECTIONS IN V9.11.1
 - Metadata, embedded fonts and logo features from V9.11 remain included.
 
 INSTALL CHECK
-Replace ALL files, including new JavaScript files and the vendor folder. Confirm V9.11.1 on the app header, then generate a NEW PDF. Its Creator must be Payroll Desk 9.11.1 and its Author must be the selected employer. A PDF showing Creator Payroll Desk iPhone web app with unembedded Helvetica was not produced by this exporter. Existing PDF files do not change after installing an app update.
+Replace ALL files, including new JavaScript files and the vendor folder. Confirm V9.12.0 on the app header, then generate a NEW PDF. Its Creator must be Payroll Desk 9.12.0 and its Author must be the selected employer. A PDF showing Creator Payroll Desk iPhone web app with unembedded Helvetica was not produced by this exporter. Existing PDF files do not change after installing an app update.
 
-Payroll Desk V9.11.1 - shared company profiles and PDF consistency
+Payroll Desk V9.12.0 - shared company profiles and PDF consistency
 
 INSTALL
 1. Export a backup from your current app.
 2. Extract this ZIP. Replace the app files with the contents of Payroll_Desk_V9_11, including the vendor folder and the new JavaScript files. Keep the existing site URL so browser profiles remain available.
-3. Reload the deployed page and confirm V9.11.1 in the header. If an installed home-screen app stays on the old version, close it and reopen after loading the site in Safari.
+3. Reload the deployed page and confirm V9.12.0 in the header. If an installed home-screen app stays on the old version, close it and reopen after loading the site in Safari.
 4. Open Adelaide, review the company fields, and save the company profile before opening W-2s or offers.
 No server package installation is needed for normal app use. All PDF dependencies and fonts are bundled locally.
 
@@ -32,8 +32,8 @@ Author: selected employer legal name.
 Title: document type and identifying employee/date or tax year.
 Subject: pay period, offer date or tax year.
 Keywords: document category, employer and Payroll Desk.
-Creator: Payroll Desk 9.11.1.
-Producer: Payroll Desk 9.11.1 | pdf-lib 1.17.1.
+Creator: Payroll Desk 9.12.0.
+Producer: Payroll Desk 9.12.0 | pdf-lib 1.17.1.
 CreationDate and ModDate: actual export time. These are independent of historical pay dates or tax years. Regenerating a document creates a new export timestamp. Custom legacy Creator/Producer descriptions no longer override the actual software identity.
 Metadata and visual consistency are not verification guarantees. PDFs are not digitally signed.
 

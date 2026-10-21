@@ -327,14 +327,24 @@ async function applySelectedPeriod(){
  if(effectivePeriods()!==24)return;
  const selected=num('periodNumber'),year=num('payrollYear'),company=activeCompany,serial=++periodChangeSerial;
  try{const dates=semimonthlyPeriod(year,selected),previousEnd=val('end');if(val('start')===dates.start&&previousEnd===dates.end){update();return;}
+  // Save the outgoing period under its own dates before loading the selected period.
+  // The selector has already changed, but the old statement fields are still on screen.
   if(!persistActiveCompany())return;
   const saved=readProfiles()[company]||{},key=employeeRecordKey()?JSON.stringify([employeeRecordKey(),dates.start,dates.end]):'',draft=saved.periodDrafts?.[key];
   $('start').value=dates.start;$('end').value=dates.end;$('autoPeriod').checked=false;$('periodNumber').value=String(selected);$('calendarYear').value=String(year);
   if(draft){for(const id of statementFields){if(draft[id]===undefined)continue;const element=$(id);if(element.type==='checkbox')element.checked=!!draft[id];else element.value=draft[id];}}
-  else{$('manualPayDate').value='';$('paymentRef').value='';$('actualPaid').value='';$('verified').checked=false;$('adviceNumber').value='';$('voucherCode').value='';if(val('ytdSource')==='manual')for(const id of ['manualYtdGross','manualYtdFed','manualYtdSS','manualYtdMed','manualYtdOther'])$(id).value='';}
+  else{
+   // Do not carry a prior period's PTO, payment, or manually entered totals
+   // into a different period. Employee/company policy settings stay intact.
+   for(const id of ['manualPayDate','paymentRef','actualPaid','adviceNumber','voucherCode','ptoBalance','sickBalance','contribCurrent','contribYtd','comments','manualYtdGross','manualYtdFed','manualYtdSS','manualYtdMed','manualYtdOther','manualFed','manualSS','manualMed','manualOther'])$(id).value='';
+   $('verified').checked=false;$('overrideCurrent').checked=false;
+  }
   populatePtoIfMissing();restoreLinkedIdentifiers();const result=calculate();if(!draft)$('statementDate').value=result.payday;
+  // A saved identifier from another period must not override the pay-date-based number.
+  const expectedAdvice=voucherPayDay()+'-0004';
+  if(!val('adviceNumber')||/^\d{8}-\d{4}$/.test(val('adviceNumber'))){$('adviceNumber').value=expectedAdvice;syncVoucherAdvice('adviceNumber');}
   $('manualCurrent').classList.toggle('hidden',!$('overrideCurrent').checked);syncPeriod();update();preparePeriodReview(previousEnd,dates.end);persistActiveCompany();
-  if(employeeRecordKey()&&(!val('adviceNumber')||/^\d{8}-0004$/.test(val('adviceNumber'))&&val('adviceNumber')!==voucherPayDay()+'-0004')){await generateAdviceNumber();if(activeCompany!==company||periodChangeSerial!==serial)return;}
+  if(employeeRecordKey()&&val('adviceNumber')===expectedAdvice){await generateAdviceNumber();if(activeCompany!==company||periodChangeSerial!==serial)return;}
   renderPeriodReview();persistActiveCompany();$('status').textContent='Period '+selected+' selected: '+dates.start+' to '+dates.end+'. Review highlighted entries before generating.';
  }catch(error){$('status').textContent=error.message;}
 }

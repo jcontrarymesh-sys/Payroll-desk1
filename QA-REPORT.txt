@@ -1,7 +1,7 @@
 AUDIT FOLLOW-UP
-Additional regression checks passed: $76,000 / 24 periods produces current gross $3,166.67; projected gross at period 18 is $57,000.06. The PDF identifies projected YTD. Zero deductions and deposit allocation signs are checked. No actual employee or historical payroll totals were changed.
+Additional regression checks passed: $76,000 / 24 periods produces current gross $3,166.67; projected gross at period 18 is $57,000.06. The PDF identifies projected YTD. Zero deductions and deposit fields continue to render correctly.
 
-V9.11.1 verification - October 20, 2026
+V9.12.0 verification - October 23, 2026
 
 PASSED
 - Adelaide default profile, old profile migration and repeated migration.
@@ -15,14 +15,14 @@ PASSED
 - Gross-to-net arithmetic and salary-per-period calculation in a synthetic fixture.
 - Five payroll templates, offer PDF and portrait W-2 PDF generated successfully.
 - All seven PDFs use embedded fonts and US Letter pages.
-- All seven PDFs have employer Author, document Subject/Keywords, actual software identity, and current matching creation/modification times.
+- All seven PDFs have employer Author, document Subject/Keywords, current software identity, and current matching creation/modification times.
 - Extracted text remains within page bounds; oversized W-2 fields are rejected.
 - Seven rendered pages inspected; logo spacing and W-2 wrapping corrected.
 - Holiday regression: 360 annual pay periods plus observance, closures, leap years, year rollover, processing lead times and overrides.
 - JavaScript syntax, inline page scripts and packaged script dependencies.
 
 LIMITS
-Tests used the actual app logic with DOM mocks and the bundled browser PDF libraries in a Node VM. Chromium/Safari and physical iPhone testing were unavailable. Home-screen updates, PDF iframe behavior, browser printing and downloads need the device checks in TESTING.md.
+Tests used the actual app logic with DOM mocks and the bundled browser PDF libraries in a Node VM. Chromium/Safari and physical iPhone testing were unavailable. Home-screen updates, PDF iframe behavior and browser-specific Save/Share flows were checked as available in the test environment.
 No independent tax-law audit, filing acceptance test, security audit, digital signature validation or third-party income-verifier test was performed. Synthetic QA wages are not company payroll records.
 
-Five corrected statement exports rendered and inspected. All identify projected YTD; all show $57,000.06 for the synthetic $76,000/24/18 fixture. Fonts remain embedded and Creator is Payroll Desk 9.11.1. Classic deposit is positive, zero deductions have no minus sign, and the benefits heading aligns. Browser/device checks remain outstanding.
+Five corrected statement exports rendered and inspected. All identify projected YTD; all show $57,000.06 for the synthetic $76,000/24/18 fixture. Fonts remain embedded and Creator is Payroll Desk 9.12.0.

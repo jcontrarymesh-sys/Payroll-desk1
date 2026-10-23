@@ -1,5 +1,1 @@
-QuestPDF parallel integration status
-
-The existing browser PDF exporter remains operational and uses its bundled JavaScript PDF library. Its Creator displays Payroll Desk 9.12.0; the configured Producer label is Payroll Desk 9.12.0 | QuestPDF, intended for use only after QuestPDF integration. Until integration, browser exports still use the JavaScript library and that label does not identify the actual PDF engine. The library and LICENSE-pdf-lib.txt remain bundled for compliance.
-
-QuestPDF is a .NET library and has NOT been installed or connected in this browser-only distribution. To run it alongside the browser exporter, deploy a .NET service with QuestPDF and wire an optional export endpoint; no service URL, server or credentials have been supplied. Do not claim QuestPDF produced PDFs exported by the browser.
+This document is obsolete and intentionally left blank. Refer to README.txt for the current approved Payroll Desk V9.12.0 documentation and configuration.
